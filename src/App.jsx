@@ -490,94 +490,156 @@ export default function App() {
         {onglet === "saisie" && (
           <>
             <style>{`
+              /* Layout principal : mois à gauche, panneau détail à droite */
               .saisie-layout {
                 display: grid;
-                grid-template-columns: 1fr 340px;
+                grid-template-columns: 1fr 420px;
                 gap: 16px;
                 align-items: start;
               }
-              @media (max-width: 1100px) {
-                .saisie-layout { grid-template-columns: 1fr 300px; }
+              @media (max-width: 1200px) {
+                .saisie-layout { grid-template-columns: 1fr 360px; }
               }
-              @media (max-width: 860px) {
+              @media (max-width: 960px) {
                 .saisie-layout { grid-template-columns: 1fr; }
               }
-              .mois-card {
+
+              /* Card générique saisie */
+              .s-card {
                 background: #0a151f;
                 border: 1px solid #132030;
                 border-radius: 12px;
-                padding: 20px 24px;
-                margin-bottom: 14px;
+                padding: 22px 24px;
               }
-              .charges-annuelles-card {
-                background: #0a151f;
-                border: 1px solid #253a18;
-                border-radius: 12px;
-                padding: 20px 24px;
+              @media (max-width: 600px) {
+                .s-card { padding: 14px 16px; }
               }
-              .detail-card {
-                background: #0a151f;
-                border: 1px solid #132030;
-                border-radius: 12px;
-                padding: 20px 24px;
+
+              /* Grille des mois : 6 col sur large, 4 sur tablette, 3 sur mobile */
+              .mois-grid-saisie {
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+                gap: 8px;
+              }
+              @media (max-width: 960px) {
+                .mois-grid-saisie { grid-template-columns: repeat(4, 1fr); }
+              }
+              @media (max-width: 600px) {
+                .mois-grid-saisie { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+              }
+
+              /* Panneau détail sticky */
+              .detail-panel {
                 position: sticky;
                 top: 72px;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
               }
+              @media (max-width: 960px) {
+                .detail-panel { position: static; }
+              }
+
+              /* Grille charges dans le panneau détail — 1 col car espace limité */
+              .detail-charges-list {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+              }
+
+              /* Grille charges annuelles — 3 col */
               .charges-annuelles-grid {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
                 gap: 12px;
                 margin-bottom: 16px;
               }
-              .detail-charges-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 12px;
-                margin-bottom: 4px;
+              @media (max-width: 700px) {
+                .charges-annuelles-grid { grid-template-columns: 1fr 1fr; }
               }
+
+              /* Récap 3 cases */
               .recap-mois-grid {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
                 gap: 8px;
               }
-              @media (max-width: 600px) {
-                .mois-card, .charges-annuelles-card, .detail-card { padding: 14px; }
-                .charges-annuelles-grid { grid-template-columns: 1fr 1fr; }
+
+              /* Input inline avec label sur même ligne */
+              .charge-row {
+                display: grid;
+                grid-template-columns: 1fr 120px;
+                align-items: center;
+                gap: 10px;
+                padding: 8px 12px;
+                background: #070d14;
+                border-radius: 8px;
+                border: 1px solid #0e1e28;
+              }
+              .charge-row:hover {
+                border-color: #1a3040;
+              }
+              .charge-row label {
+                font-size: 12px;
+                color: #7ab5c8;
+                font-family: 'DM Mono', monospace;
+                cursor: default;
+              }
+              .charge-row input {
+                background: #0a151f;
+                border: 1px solid #1a3040;
+                border-radius: 6px;
+                padding: 7px 10px;
+                color: #c8dde8;
+                font-size: 13px;
+                font-family: 'DM Mono', monospace;
+                width: 100%;
+                outline: none;
+                text-align: right;
+                box-sizing: border-box;
+              }
+              .charge-row input:focus {
+                border-color: #06d6a050;
+                background: #0e2030;
               }
             `}</style>
 
             <div className="saisie-layout">
 
-              {/* ── COLONNE GAUCHE : grille mois + charges annuelles ── */}
-              <div>
+              {/* ── COLONNE GAUCHE ── */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
                 {/* Grille des 12 mois */}
-                <div className="mois-card">
-                  <div style={s.sectionTitle}>
+                <div className="s-card">
+                  <div style={{ ...s.sectionTitle, marginBottom: 16 }}>
                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#06d6a0", display: "inline-block", flexShrink: 0 }} />
                     CA mensuel
-                    <span style={{ fontSize: 11, color: "#2a5060", fontWeight: 400, marginLeft: 4 }}>— cliquer pour détailler les charges</span>
+                    <span style={{ fontSize: 11, color: "#2a4a5a", fontWeight: 400 }}>— cliquer un mois pour saisir les charges</span>
                   </div>
-                  <div className="mois-grid" style={s.moisGrid}>
+                  <div className="mois-grid-saisie">
                     {MOIS.map((m, i) => {
                       const hasCa = calculs[i].ca > 0;
                       const isActive = moisActif === i;
+                      const hasCharges = CHARGES_KEYS.some(k => parse(donneesMois[i][k]) > 0);
                       return (
                         <div
                           key={i}
                           onClick={() => setMoisActif(i)}
                           style={{
-                            background: isActive ? "#0e3a50" : hasCa ? "#0a2030" : "#080e16",
-                            border: `1px solid ${isActive ? "#06d6a0" : hasCa ? "#1e4a5e" : "#132030"}`,
-                            borderRadius: 10, padding: "10px 12px", cursor: "pointer",
+                            background: isActive ? "#0b2e46" : hasCa ? "#091a26" : "#070d14",
+                            border: `1px solid ${isActive ? "#06d6a0" : hasCa ? "#1a3e54" : "#0e1e2a"}`,
+                            borderRadius: 10, padding: "12px 10px", cursor: "pointer",
                             transition: "all 0.15s",
                           }}
                         >
-                          <div style={{
-                            fontSize: 11, fontFamily: "DM Mono, monospace", fontWeight: 600,
-                            letterSpacing: "0.05em", marginBottom: 8,
-                            color: isActive ? "#06d6a0" : hasCa ? "#7ab5c8" : "#2a4a5a",
-                          }}>{m}</div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                            <span style={{
+                              fontSize: 11, fontFamily: "DM Mono, monospace", fontWeight: 600,
+                              letterSpacing: "0.06em",
+                              color: isActive ? "#06d6a0" : hasCa ? "#7ab5c8" : "#2a4a5a",
+                            }}>{m}</span>
+                            {hasCharges && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#e05555", display: "inline-block", flexShrink: 0 }} title="Charges saisies" />}
+                          </div>
                           <input
                             type="number" placeholder="0" min="0"
                             value={donneesMois[i].ca}
@@ -586,10 +648,10 @@ export default function App() {
                             onChange={e => { updateMois(i, "ca", e.target.value); setMoisActif(i); }}
                             style={{
                               background: "transparent", border: "none",
-                              borderBottom: `1px solid ${isActive ? "#06d6a060" : hasCa ? "#1e4a5e" : "#1a3040"}`,
+                              borderBottom: `1px solid ${isActive ? "#06d6a050" : hasCa ? "#1a3e54" : "#0e1e2a"}`,
                               borderRadius: 0, padding: "3px 0",
-                              color: isActive ? "#e0f5ec" : hasCa ? "#c8dde8" : "#3a6070",
-                              fontSize: 13, fontFamily: "DM Mono, monospace", fontWeight: 600,
+                              color: isActive ? "#e0f5ec" : hasCa ? "#c8dde8" : "#2a4a5a",
+                              fontSize: 13, fontFamily: "DM Mono, monospace", fontWeight: 700,
                               width: "100%", outline: "none",
                             }}
                           />
@@ -599,39 +661,37 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Charges annuelles fixes */}
+                {/* Charges annuelles fixes — colonne gauche, sous la grille mois */}
                 {regimeFiscal === "reel" && (
-                  <div className="charges-annuelles-card">
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 6 }}>
-                      <div style={s.sectionTitle}>
+                  <div className="s-card" style={{ borderColor: "#1e3010" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 6 }}>
+                      <div style={{ ...s.sectionTitle, margin: 0 }}>
                         <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", display: "inline-block", flexShrink: 0 }} />
                         Charges annuelles fixes
                       </div>
-                      <span style={{ fontSize: 11, color: "#4a5a30", fontFamily: "DM Mono" }}>répartition auto / 12 mois</span>
+                      <span style={{ fontSize: 11, color: "#3a5020", fontFamily: "DM Mono" }}>Répartition automatique sur 12 mois</span>
                     </div>
                     <div className="charges-annuelles-grid">
                       {CHARGES_KEYS.map(key => (
                         <div key={key}>
-                          <label style={{ ...s.label, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {CHARGES_LABELS[key]}
-                          </label>
+                          <label style={{ ...s.label, marginBottom: 6 }}>{CHARGES_LABELS[key]}</label>
                           <div style={{ position: "relative" }}>
                             <input
-                              style={{ ...s.input, paddingRight: 28 }}
+                              style={{ ...s.input, paddingRight: 30 }}
                               type="number" placeholder="0" min="0"
                               value={chargesAnnuellesBloc[key]}
                               onChange={e => updateChargesAnnuellesBloc({ [key]: e.target.value })}
                             />
-                            <span style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "#3a5060", fontFamily: "DM Mono", pointerEvents: "none" }}>/an</span>
+                            <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "#2a4a5a", fontFamily: "DM Mono", pointerEvents: "none" }}>/an</span>
                           </div>
                         </div>
                       ))}
                     </div>
                     <div style={{ borderTop: "1px solid #132030", paddingTop: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                       <div style={{ fontSize: 12, color: "#4a7a90", fontFamily: "DM Mono" }}>
-                        Total : <strong style={{ color: "#c8dde8" }}>{formatEur(totalBlocAnnuel)}</strong>
+                        Total annuel : <strong style={{ color: "#c8dde8" }}>{formatEur(totalBlocAnnuel)}</strong>
                         {totalBlocAnnuel > 0 && (
-                          <span> → <strong style={{ color: "#7ab5c8" }}>{formatEur(totalBlocAnnuel / 12)}</strong><span style={{ color: "#3a6070" }}>/mois</span></span>
+                          <span style={{ color: "#3a6070" }}> → <strong style={{ color: "#7ab5c8" }}>{formatEur(totalBlocAnnuel / 12)}</strong>/mois</span>
                         )}
                       </div>
                       <button
@@ -640,7 +700,7 @@ export default function App() {
                         style={{
                           background: totalBlocAnnuel > 0 ? "#0e3a50" : "#0a151f",
                           border: `1px solid ${totalBlocAnnuel > 0 ? "#1e6a80" : "#132030"}`,
-                          borderRadius: 8, padding: "7px 14px", flexShrink: 0,
+                          borderRadius: 8, padding: "8px 16px", flexShrink: 0,
                           color: totalBlocAnnuel > 0 ? "#06d6a0" : "#2a4a5a",
                           cursor: totalBlocAnnuel > 0 ? "pointer" : "default",
                           fontFamily: "DM Mono, monospace", fontSize: 12,
@@ -655,47 +715,63 @@ export default function App() {
 
               </div>{/* fin colonne gauche */}
 
-              {/* ── COLONNE DROITE : détail du mois actif ── */}
-              <div>
-                <div className="detail-card">
-                  {/* Header */}
+              {/* ── COLONNE DROITE : panneau détail sticky ── */}
+              <div className="detail-panel">
+
+                {/* Card : détail du mois sélectionné */}
+                <div className="s-card">
+                  {/* Header mois */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#06d6a0", display: "inline-block" }} />
-                      <span style={{ fontSize: 14, fontFamily: "DM Mono", fontWeight: 600, color: "#c8dde8" }}>
-                        {MOIS[moisActif]}
-                      </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 10,
+                        background: "linear-gradient(135deg, #0e3a50, #0a2030)",
+                        border: "1px solid #1a4a5e",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontFamily: "DM Mono", fontWeight: 700, fontSize: 13, color: "#06d6a0",
+                      }}>
+                        {MOIS[moisActif].slice(0, 3)}
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: "DM Mono", fontWeight: 700, fontSize: 15, color: "#c8dde8" }}>
+                          {["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"][moisActif]}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#2a4a5a", fontFamily: "DM Mono" }}>Détail de saisie</div>
+                      </div>
                     </div>
                     {calculs[moisActif].ca > 0
-                      ? <span style={s.pill("#06d6a0")}>✓ CA saisi</span>
-                      : <span style={{ fontSize: 11, color: "#2a4a5a", fontFamily: "DM Mono" }}>aucune saisie</span>
+                      ? <span style={s.pill("#06d6a0")}>✓ saisi</span>
+                      : <span style={{ fontSize: 11, color: "#1a3a4a", fontFamily: "DM Mono", background: "#070d14", border: "1px solid #0e1e28", borderRadius: 20, padding: "3px 10px" }}>vide</span>
                     }
                   </div>
 
-                  {/* CA du mois */}
-                  <div style={{ marginBottom: 20 }}>
-                    <label style={s.label}>CA du mois (€)</label>
-                    <input
-                      style={{ ...s.input, fontSize: 17, fontWeight: 700, padding: "12px 14px" }}
-                      type="number" placeholder="0" min="0"
-                      value={donneesMois[moisActif].ca}
-                      onChange={e => updateMois(moisActif, "ca", e.target.value)}
-                    />
+                  {/* CA du mois — champ principal */}
+                  <div style={{ marginBottom: regimeFiscal === "reel" ? 20 : 0 }}>
+                    <label style={s.label}>Chiffre d'affaires du mois</label>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        style={{ ...s.input, fontSize: 20, fontWeight: 700, padding: "13px 44px 13px 14px", color: "#e0f5ec" }}
+                        type="number" placeholder="0" min="0"
+                        value={donneesMois[moisActif].ca}
+                        onChange={e => updateMois(moisActif, "ca", e.target.value)}
+                      />
+                      <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#4a7a90", fontFamily: "DM Mono" }}>€</span>
+                    </div>
                   </div>
 
-                  {/* Charges déductibles — réel BNC */}
+                  {/* Charges déductibles ligne par ligne — réel BNC */}
                   {regimeFiscal === "reel" && (
                     <>
-                      <div style={{ ...s.sectionTitle, marginBottom: 12 }}>
+                      <div style={{ ...s.sectionTitle, marginBottom: 10 }}>
                         <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#e05555", display: "inline-block", flexShrink: 0 }} />
-                        Charges du mois
+                        Charges déductibles du mois
                       </div>
-                      <div className="detail-charges-grid">
+                      <div className="detail-charges-list">
                         {CHARGES_KEYS.map(key => (
-                          <div key={key}>
-                            <label style={{ ...s.label, fontSize: 10 }}>{CHARGES_LABELS[key]}</label>
+                          <div key={key} className="charge-row">
+                            <label>{CHARGES_LABELS[key]}</label>
                             <input
-                              style={s.input} type="number" placeholder="0" min="0"
+                              type="number" placeholder="0" min="0"
                               value={donneesMois[moisActif][key]}
                               onChange={e => updateMois(moisActif, key, e.target.value)}
                             />
@@ -707,34 +783,43 @@ export default function App() {
 
                   {/* Info micro-BNC */}
                   {regimeFiscal === "micro" && (
-                    <div style={{ background: "#0e2a38", border: "1px solid #1e4a5e", borderRadius: 8, padding: "14px 16px" }}>
-                      <div style={{ color: "#7ab5c8", fontWeight: 600, fontFamily: "DM Mono", fontSize: 12, marginBottom: 6 }}>Micro-BNC — année {anneeExercice}</div>
-                      <div style={{ fontSize: 12, color: "#4a8fa0", fontFamily: "DM Mono", lineHeight: 1.7 }}>
-                        Abattement forfaitaire <strong style={{ color: "#c8dde8" }}>34%</strong> appliqué automatiquement.<br />
-                        Les charges réelles ne sont <strong style={{ color: "#e05555" }}>pas déductibles</strong>.
+                    <div style={{ background: "#0b2030", border: "1px solid #1a3a4e", borderRadius: 10, padding: "14px 16px", marginTop: 16 }}>
+                      <div style={{ color: "#7ab5c8", fontWeight: 600, fontFamily: "DM Mono", fontSize: 12, marginBottom: 6 }}>Micro-BNC — Année {anneeExercice}</div>
+                      <div style={{ fontSize: 12, color: "#4a7a90", fontFamily: "DM Mono", lineHeight: 1.8 }}>
+                        Abattement forfaitaire <strong style={{ color: "#c8dde8" }}>34%</strong> appliqué auto.<br />
+                        Charges réelles <strong style={{ color: "#e05555" }}>non déductibles</strong>.
                       </div>
                     </div>
                   )}
-
-                  {/* Récap du mois */}
-                  {calculs[moisActif].ca > 0 && (
-                    <>
-                      <div style={s.divider} />
-                      <div className="recap-mois-grid">
-                        {[
-                          { label: "CA", value: formatEur(calculs[moisActif].ca), color: "#7ab5c8" },
-                          { label: regimeFiscal === "micro" ? "Abatt. 34%" : "Charges", value: formatEur(calculs[moisActif].chargesDeductibles), color: "#e05555" },
-                          { label: "Bénéfice", value: formatEur(calculs[moisActif].beneficeMensuel), color: "#06d6a0" },
-                        ].map((item, i) => (
-                          <div key={i} style={{ textAlign: "center", background: "#070d14", borderRadius: 8, padding: "12px 8px" }}>
-                            <div style={{ fontSize: 10, color: "#4a7a90", fontFamily: "DM Mono", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.08em" }}>{item.label}</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: item.color, fontFamily: "DM Mono" }}>{item.value}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
                 </div>
+
+                {/* Récap du mois — card séparée en bas du panneau */}
+                {calculs[moisActif].ca > 0 && (
+                  <div className="s-card" style={{ background: "#070d14", borderColor: "#0e1e28" }}>
+                    <div style={{ ...s.sectionTitle, marginBottom: 14 }}>
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#7ab5c8", display: "inline-block" }} />
+                      Récap — {["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"][moisActif]}
+                    </div>
+                    <div className="recap-mois-grid">
+                      {[
+                        { label: "CA", value: formatEur(calculs[moisActif].ca), color: "#7ab5c8", icon: "↑" },
+                        { label: regimeFiscal === "micro" ? "Abatt. 34%" : "Charges", value: formatEur(calculs[moisActif].chargesDeductibles), color: "#e05555", icon: "↓" },
+                        { label: "Bénéfice", value: formatEur(calculs[moisActif].beneficeMensuel), color: calculs[moisActif].beneficeMensuel >= 0 ? "#06d6a0" : "#e05555", icon: "=" },
+                      ].map((item, i) => (
+                        <div key={i} style={{ textAlign: "center", background: "#0a151f", borderRadius: 10, padding: "14px 8px", border: "1px solid #0e1e28" }}>
+                          <div style={{ fontSize: 10, color: "#2a4a5a", fontFamily: "DM Mono", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.1em" }}>{item.label}</div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: item.color, fontFamily: "DM Mono" }}>{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Provision cotisations */}
+                    <div style={{ marginTop: 12, padding: "10px 14px", background: "#0a1520", border: "1px solid #0e2030", borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 11, color: "#3a6070", fontFamily: "DM Mono" }}>À provisionner (cot.)</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b", fontFamily: "DM Mono" }}>{formatEur(totaux.provisionMensuelle)}</span>
+                    </div>
+                  </div>
+                )}
+
               </div>{/* fin colonne droite */}
 
             </div>{/* fin saisie-layout */}
