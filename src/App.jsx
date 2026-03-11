@@ -160,7 +160,7 @@ export default function App() {
   useEffect(() => {
     saveToStorage({ ...storeAnnees, _meta: { anneeExercice, nbAnnees } });
     setSavedFlash(true);
-    const t = setTimeout(() => setSavedFlash(false), 1500);
+    const t = setTimeout(() => setSavedFlash(false), 2000);
     return () => clearTimeout(t);
   }, [storeAnnees, anneeExercice, nbAnnees]);
 
@@ -432,12 +432,17 @@ export default function App() {
         <div style={{
           display: "flex", alignItems: "center", gap: 5,
           fontSize: 11, fontFamily: "DM Mono, monospace",
-          color: savedFlash ? "#06d6a0" : "#1e3a4a",
-          transition: "color 0.3s",
+          background: savedFlash ? "#06d6a020" : "transparent",
+          border: `1px solid ${savedFlash ? "#06d6a050" : "transparent"}`,
+          borderRadius: 6, padding: "4px 10px",
+          color: savedFlash ? "#06d6a0" : "transparent",
+          opacity: savedFlash ? 1 : 0,
+          transition: "opacity 0.4s ease, color 0.4s ease, background 0.4s ease, border-color 0.4s ease",
           flexShrink: 0,
+          minWidth: 100,
+          pointerEvents: "none",
         }}>
-          <span style={{ fontSize: 13 }}>{savedFlash ? "✓" : "·"}</span>
-          {savedFlash ? "sauvegardé" : "auto-save"}
+          ✓ sauvegardé
         </div>
 
         <nav className="header-nav">
