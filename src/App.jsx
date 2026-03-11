@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 // ─── CONSTANTES FISCALES 2025 ─────────────────────────────────────────────────
@@ -101,6 +101,31 @@ const initStoreAnnees = () => {
   return store;
 };
 
+// ─── LOCALSTORAGE PERSISTENCE ─────────────────────────────────────────────────
+
+const LS_KEY = "idel-compta-v1";
+
+const loadFromStorage = () => {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+};
+
+const saveToStorage = (data) => {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {}
+};
+
+const initFromStorage = () => {
+  const saved = loadFromStorage();
+  if (!saved) return initStoreAnnees();
+  // Merge : on part du store par défaut, on écrase avec les données sauvées
+  const base = initStoreAnnees();
+  Object.keys(saved).forEach(k => { base[k] = saved[k]; });
+  return base;
+};
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -118,11 +143,26 @@ const CustomTooltip = ({ active, payload, label }) => {
 // ─── APP ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [anneeExercice, setAnneeExercice] = useState(3);
-  const [storeAnnees, setStoreAnnees] = useState(initStoreAnnees);
-  const [nbAnnees, setNbAnnees] = useState(3);
+  const [anneeExercice, setAnneeExercice] = useState(() => {
+    const saved = loadFromStorage();
+    return saved?._meta?.anneeExercice ?? 3;
+  });
+  const [storeAnnees, setStoreAnnees] = useState(initFromStorage);
+  const [nbAnnees, setNbAnnees] = useState(() => {
+    const saved = loadFromStorage();
+    return saved?._meta?.nbAnnees ?? 3;
+  });
   const [onglet, setOnglet] = useState("dashboard");
   const [moisActif, setMoisActif] = useState(new Date().getMonth());
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  // Auto-save à chaque changement
+  useEffect(() => {
+    saveToStorage({ ...storeAnnees, _meta: { anneeExercice, nbAnnees } });
+    setSavedFlash(true);
+    const t = setTimeout(() => setSavedFlash(false), 1500);
+    return () => clearTimeout(t);
+  }, [storeAnnees, anneeExercice, nbAnnees]);
 
   // Accès aux données de l'année active
   const anneeData = storeAnnees[anneeExercice];
@@ -386,6 +426,18 @@ export default function App() {
             </span>
             <span style={{ fontSize: 10, color: "#4a6a50" }}>🔒</span>
           </div>
+        </div>
+
+        {/* Indicateur de sauvegarde */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 5,
+          fontSize: 11, fontFamily: "DM Mono, monospace",
+          color: savedFlash ? "#06d6a0" : "#1e3a4a",
+          transition: "color 0.3s",
+          flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 13 }}>{savedFlash ? "✓" : "·"}</span>
+          {savedFlash ? "sauvegardé" : "auto-save"}
         </div>
 
         <nav className="header-nav">
