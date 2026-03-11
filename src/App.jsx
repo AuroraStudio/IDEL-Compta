@@ -229,29 +229,29 @@ export default function App() {
   // ── Styles ────────────────────────────────────────────────────────────────
   const s = {
     app: { minHeight: "100vh", background: "#070d14", color: "#c8dde8", fontFamily: "'DM Sans', sans-serif", fontSize: 14 },
-    header: { borderBottom: "1px solid #132030", padding: "0 32px", display: "flex", alignItems: "center", gap: 24, height: 64 },
-    logo: { display: "flex", alignItems: "center", gap: 10, marginRight: 8 },
-    logoIcon: { width: 32, height: 32, background: "linear-gradient(135deg, #0e8fa0, #06d6a0)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 },
-    logoText: { fontFamily: "'DM Mono', monospace", fontWeight: 600, fontSize: 15, color: "#e0f0f5", letterSpacing: "0.05em" },
-    nav: { display: "flex", gap: 4, marginLeft: "auto" },
-    navBtn: (active) => ({ background: active ? "#0e2a38" : "transparent", border: active ? "1px solid #1e4a5e" : "1px solid transparent", borderRadius: 8, padding: "6px 16px", color: active ? "#06d6a0" : "#6a8fa0", cursor: "pointer", fontSize: 13, fontFamily: "'DM Mono', monospace", transition: "all 0.15s" }),
-    badge: (color) => ({ background: color + "22", border: `1px solid ${color}44`, color, borderRadius: 6, padding: "2px 10px", fontSize: 11, fontFamily: "'DM Mono', monospace" }),
-    main: { padding: "28px 32px", maxWidth: 1200, margin: "0 auto" },
+    header: { borderBottom: "1px solid #132030", padding: "0 24px", display: "flex", alignItems: "center", gap: 16, height: 56, flexWrap: "wrap", position: "sticky", top: 0, zIndex: 100, background: "#070d14" },
+    logo: { display: "flex", alignItems: "center", gap: 8, marginRight: 4, flexShrink: 0 },
+    logoIcon: { width: 30, height: 30, background: "linear-gradient(135deg, #0e8fa0, #06d6a0)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 },
+    logoText: { fontFamily: "'DM Mono', monospace", fontWeight: 600, fontSize: 14, color: "#e0f0f5", letterSpacing: "0.05em" },
+    nav: { display: "flex", gap: 3, marginLeft: "auto", flexShrink: 0 },
+    navBtn: (active) => ({ background: active ? "#0e2a38" : "transparent", border: active ? "1px solid #1e4a5e" : "1px solid transparent", borderRadius: 8, padding: "6px 14px", color: active ? "#06d6a0" : "#6a8fa0", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono', monospace", transition: "all 0.15s" }),
+    badge: (color) => ({ background: color + "22", border: `1px solid ${color}44`, color, borderRadius: 6, padding: "2px 10px", fontSize: 11, fontFamily: "'DM Mono', monospace", flexShrink: 0 }),
+    main: { padding: "24px", width: "100%", boxSizing: "border-box" },
     card: { background: "#0a151f", border: "1px solid #132030", borderRadius: 12, padding: "20px 24px", flex: 1 },
     cardTitle: { fontSize: 11, color: "#4a7a90", fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 },
-    bigNum: (color = "#e0f0f5") => ({ fontSize: 28, fontWeight: 700, color, fontFamily: "'DM Mono', monospace", lineHeight: 1.1 }),
+    bigNum: (color = "#e0f0f5") => ({ fontSize: 26, fontWeight: 700, color, fontFamily: "'DM Mono', monospace", lineHeight: 1.1 }),
     subNum: { fontSize: 12, color: "#4a7a90", marginTop: 4, fontFamily: "'DM Mono', monospace" },
-    grid4: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 16 },
-    grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 },
-    sectionTitle: { fontSize: 13, color: "#4a7a90", fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 },
+    grid4: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 14 },
+    grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 },
+    sectionTitle: { fontSize: 12, color: "#4a7a90", fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14, display: "flex", alignItems: "center", gap: 8 },
     input: { background: "#0a1520", border: "1px solid #1a3040", borderRadius: 8, padding: "10px 14px", color: "#c8dde8", fontSize: 13, fontFamily: "'DM Mono', monospace", width: "100%", outline: "none", boxSizing: "border-box" },
     label: { fontSize: 11, color: "#4a7a90", fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6, display: "block" },
-    moisGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 24 },
+    moisGrid: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 20 },
     moisBtn: (active, hasCa) => ({ background: active ? "#0e3a50" : hasCa ? "#0a2030" : "#080e16", border: `1px solid ${active ? "#06d6a0" : hasCa ? "#1e4a5e" : "#132030"}`, borderRadius: 10, padding: "10px 12px", color: active ? "#06d6a0" : hasCa ? "#7ab5c8" : "#2a4a5a", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }),
     moisBtnLabel: { fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, letterSpacing: "0.05em" },
     moisBtnCa: { fontSize: 12, fontFamily: "'DM Mono', monospace", marginTop: 2 },
     pill: (color) => ({ display: "inline-flex", alignItems: "center", gap: 6, background: color + "15", border: `1px solid ${color}30`, borderRadius: 20, padding: "4px 12px", fontSize: 11, fontFamily: "'DM Mono', monospace", color }),
-    divider: { borderTop: "1px solid #132030", margin: "20px 0" },
+    divider: { borderTop: "1px solid #132030", margin: "18px 0" },
     cotisRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #0e1e28" },
     alertBox: (color) => ({ background: color + "10", border: `1px solid ${color}30`, borderRadius: 10, padding: "14px 18px", marginBottom: 12 }),
     select: { background: "#0a151f", border: "1px solid #1a3040", borderRadius: 8, padding: "6px 12px", color: "#c8dde8", fontSize: 12, fontFamily: "'DM Mono', monospace", cursor: "pointer", outline: "none" },
@@ -263,6 +263,27 @@ export default function App() {
   return (
     <div style={s.app}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+      <style>{`
+        *, *::before, *::after { box-sizing: border-box; }
+        body { margin: 0; overflow-x: hidden; }
+        @media (max-width: 900px) {
+          .grid4 { grid-template-columns: repeat(2, 1fr) !important; }
+          .grid2 { grid-template-columns: 1fr !important; }
+          .mois-grid { grid-template-columns: repeat(4, 1fr) !important; }
+          .cotis-recap { grid-template-columns: repeat(3, 1fr) !important; }
+          .header-inner { flex-wrap: wrap; height: auto !important; padding: 12px 16px !important; gap: 10px !important; }
+          .charges-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .detail-grid { grid-template-columns: 1fr 1fr !important; }
+        }
+        @media (max-width: 600px) {
+          .grid4 { grid-template-columns: 1fr 1fr !important; }
+          .mois-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .cotis-recap { grid-template-columns: repeat(2, 1fr) !important; }
+          .charges-grid { grid-template-columns: 1fr 1fr !important; }
+          .detail-grid { grid-template-columns: 1fr !important; }
+          .main-pad { padding: 14px !important; }
+        }
+      `}</style>
 
       {/* HEADER */}
       <header style={s.header}>
@@ -339,12 +360,12 @@ export default function App() {
         </nav>
       </header>
 
-      <main style={{ padding: "28px 32px", maxWidth: 1200, margin: "0 auto" }}>
+      <main className="main-pad" style={{ padding: "24px", width: "100%", boxSizing: "border-box" }}>
 
         {/* ── DASHBOARD ──────────────────────────────────────────────────── */}
         {onglet === "dashboard" && (
           <>
-            <div style={s.grid4}>
+            <div className="grid4" style={s.grid4}>
               {[
                 { label: "CA annuel estimé", value: formatEur(totaux.caAnnuel), sub: `${moisRemplis}/12 mois saisis`, color: "#c8dde8" },
                 { label: "Bénéfice BNC brut", value: formatEur(totaux.beneficeAnnuel), sub: `Charges déd. : ${formatEur(totaux.chargesAnnuelles)}`, color: "#7ab5c8" },
@@ -360,7 +381,7 @@ export default function App() {
               ))}
             </div>
 
-            <div style={s.grid2}>
+            <div className="grid2" style={s.grid2}>
               <div style={s.card}>
                 <div style={s.sectionTitle}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#06d6a0", display: "inline-block" }} />
@@ -430,12 +451,23 @@ export default function App() {
         {/* ── SAISIE ────────────────────────────────────────────────── */}
         {onglet === "saisie" && (
           <>
+            <style>{`
+              @media (min-width: 960px) {
+                .saisie-layout { display: grid; grid-template-columns: 1fr 380px; gap: 16px; align-items: start; }
+              }
+              @media (max-width: 959px) {
+                .saisie-layout { display: flex; flex-direction: column; gap: 16px; }
+              }
+            `}</style>
+            <div className="saisie-layout">
+              {/* Colonne gauche : mois + charges annuelles */}
+              <div>
             {/* Grille des 12 mois — CA saisissable directement dans chaque case */}
             <div style={s.sectionTitle}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#06d6a0", display: "inline-block" }} />
               CA mensuel — saisir directement ou cliquer pour détailler les charges
             </div>
-            <div style={s.moisGrid}>
+            <div className="mois-grid" style={s.moisGrid}>
               {MOIS.map((m, i) => {
                 const hasCa = calculs[i].ca > 0;
                 const isActive = moisActif === i;
@@ -482,8 +514,13 @@ export default function App() {
               })}
             </div>
 
+              {/* Charges annuelles fixes — ci-dessous dans la même colonne gauche si réel BNC */}
+            </div>
+
+              {/* Colonne droite : détail du mois sélectionné */}
+              <div>
             {/* Détail du mois sélectionné */}
-            <div style={{ ...s.card, maxWidth: 640, marginBottom: 24 }}>
+            <div style={{ ...s.card, marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <div style={{ ...s.sectionTitle, margin: 0 }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#06d6a0" }} />
@@ -497,7 +534,7 @@ export default function App() {
               {regimeFiscal === "reel" && (
                 <>
                   <div style={{ ...s.sectionTitle, margin: "0 0 16px" }}>Charges déductibles du mois</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <div className="detail-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     {CHARGES_KEYS.map(key => (
                       <div key={key}>
                         <label style={s.label}>{CHARGES_LABELS[key]} (€)</label>
@@ -549,7 +586,7 @@ export default function App() {
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
                   Charges annuelles fixes — répartition automatique sur 12 mois
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 16 }}>
+                <div className="charges-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 16 }}>
                   {CHARGES_KEYS.map(key => (
                     <div key={key}>
                       <label style={s.label}>{CHARGES_LABELS[key]} / an (€)</label>
@@ -583,13 +620,15 @@ export default function App() {
                 </div>
               </div>
             )}
+              </div>{/* fin colonne droite */}
+            </div>{/* fin saisie-layout */}
           </>
         )}
 
         {/* ── COTISATIONS ────────────────────────────────────────────────── */}
         {onglet === "cotisations" && (
           <>
-            <div style={s.grid2}>
+            <div className="grid2" style={s.grid2}>
               <div style={s.card}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                   <div>
@@ -652,7 +691,7 @@ export default function App() {
 
             <div style={s.card}>
               <div style={s.sectionTitle}>Récapitulatif & Simulation annuelle</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0 }}>
+              <div className="cotis-recap" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0 }}>
                 {[
                   { label: "CA Annuel", value: totaux.caAnnuel, color: "#c8dde8", bg: "#070d14" },
                   { label: "Charges déd.", value: totaux.chargesAnnuelles, color: "#e05555", bg: "#070d14" },
