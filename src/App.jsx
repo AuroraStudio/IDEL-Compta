@@ -265,35 +265,76 @@ export default function App() {
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
-        body { margin: 0; overflow-x: hidden; }
-        @media (max-width: 900px) {
+        html, body { margin: 0; padding: 0; overflow-x: hidden; width: 100%; }
+        #root { width: 100%; }
+
+        /* ── Header responsive ── */
+        .idel-header {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 20px;
+          height: auto;
+          min-height: 56px;
+        }
+        .header-logo { flex-shrink: 0; }
+        .header-annees { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .header-regime { flex-shrink: 0; }
+        .header-nav { display: flex; gap: 3px; margin-left: auto; flex-shrink: 0; }
+
+        /* ── Grilles ── */
+        .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+        .mois-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 20px; }
+        .cotis-recap { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; }
+        .charges-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .main-pad { padding: 20px; width: 100%; box-sizing: border-box; }
+
+        /* ── Tablette ── */
+        @media (max-width: 960px) {
           .grid4 { grid-template-columns: repeat(2, 1fr) !important; }
           .grid2 { grid-template-columns: 1fr !important; }
           .mois-grid { grid-template-columns: repeat(4, 1fr) !important; }
           .cotis-recap { grid-template-columns: repeat(3, 1fr) !important; }
-          .header-inner { flex-wrap: wrap; height: auto !important; padding: 12px 16px !important; gap: 10px !important; }
           .charges-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .detail-grid { grid-template-columns: 1fr 1fr !important; }
         }
+
+        /* ── Mobile ── */
         @media (max-width: 600px) {
-          .grid4 { grid-template-columns: 1fr 1fr !important; }
-          .mois-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .idel-header { padding: 10px 14px; gap: 6px; }
+          .header-nav button { padding: 5px 9px !important; font-size: 11px !important; }
+          .header-nav button .nav-label-long { display: none; }
+          .header-nav button .nav-label-short { display: inline; }
+          .grid4 { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+          .grid2 { grid-template-columns: 1fr !important; }
+          .mois-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 6px !important; }
           .cotis-recap { grid-template-columns: repeat(2, 1fr) !important; }
           .charges-grid { grid-template-columns: 1fr 1fr !important; }
           .detail-grid { grid-template-columns: 1fr !important; }
-          .main-pad { padding: 14px !important; }
+          .main-pad { padding: 12px !important; }
         }
+
+        /* ── Très petit mobile ── */
+        @media (max-width: 380px) {
+          .mois-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .grid4 { grid-template-columns: 1fr !important; }
+        }
+
+        /* ── Nav labels ── */
+        .nav-label-short { display: none; }
       `}</style>
 
       {/* HEADER */}
-      <header style={s.header}>
-        <div style={s.logo}>
+      <header className="idel-header" style={{ borderBottom: "1px solid #132030", position: "sticky", top: 0, zIndex: 100, background: "#070d14" }}>
+        <div className="header-logo" style={s.logo}>
           <div style={s.logoIcon}>🩺</div>
           <span style={s.logoText}>IDEL Compta</span>
         </div>
 
         {/* Sélecteur d'année avec indicateurs de données */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="header-annees">
           <span style={{ fontSize: 11, color: "#4a7a90" }}>Année</span>
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             {Array.from({ length: nbAnnees }, (_, i) => i + 1).map(a => (
@@ -309,14 +350,13 @@ export default function App() {
                   display: "flex", alignItems: "center", gap: 5, transition: "all 0.15s",
                 }}
               >
-                Année {a}
+                A{a}
                 {a <= 2 && <span style={{ fontSize: 9, color: a === anneeExercice ? "#8abe50" : "#3a5a30" }}>M</span>}
                 {anneeHasDonnees(a) && (
                   <span style={{ width: 5, height: 5, borderRadius: "50%", background: anneeExercice === a ? "#06d6a0" : "#1e8fa0", display: "inline-block" }} />
                 )}
               </button>
             ))}
-            {/* Bouton + pour ajouter une année */}
             <button
               onClick={ajouterAnnee}
               title={`Ajouter l'année ${nbAnnees + 1}`}
@@ -333,39 +373,37 @@ export default function App() {
           </div>
         </div>
 
-        {/* Régime fiscal — verrouillé selon l'année */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 11, color: "#4a7a90" }}>Régime fiscal</span>
+        {/* Régime fiscal */}
+        <div className="header-regime" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, color: "#4a7a90" }}>Régime</span>
           <div style={{
             background: regimeFiscal === "reel" ? "#0e3a50" : "#1a2a10",
             border: `1px solid ${regimeFiscal === "reel" ? "#1e6a80" : "#3a5a20"}`,
-            borderRadius: 8, padding: "5px 14px", display: "flex", alignItems: "center", gap: 7,
+            borderRadius: 8, padding: "5px 12px", display: "flex", alignItems: "center", gap: 6,
           }}>
             <span style={{ fontSize: 11, fontFamily: "DM Mono, monospace", color: regimeFiscal === "reel" ? "#06d6a0" : "#8abe50", fontWeight: 600 }}>
-              {regimeFiscal === "reel" ? "Réel BNC (2035)" : "Micro-BNC"}
+              {regimeFiscal === "reel" ? "Réel BNC" : "Micro-BNC"}
             </span>
             <span style={{ fontSize: 10, color: "#4a6a50" }}>🔒</span>
           </div>
         </div>
 
-        {/* Libellé année active */}
-        <div style={{ fontSize: 11, color: "#4a7a90", fontFamily: "DM Mono, monospace", background: "#0a151f", border: "1px solid #132030", borderRadius: 8, padding: "5px 12px" }}>
-          {anneeLabel(anneeExercice)}
-        </div>
-
-        <nav style={s.nav}>
-          {[["dashboard", "📊 Dashboard"], ["saisie", "✏️ Saisie"], ["cotisations", "🧾 Cotisations"]].map(([id, label]) => (
-            <button key={id} style={s.navBtn(onglet === id)} onClick={() => setOnglet(id)}>{label}</button>
+        <nav className="header-nav">
+          {[["dashboard", "📊", "Dashboard"], ["saisie", "✏️", "Saisie"], ["cotisations", "🧾", "Cotisations"]].map(([id, icon, label]) => (
+            <button key={id} style={s.navBtn(onglet === id)} onClick={() => setOnglet(id)}>
+              <span className="nav-label-short">{icon}</span>
+              <span className="nav-label-long">{icon} {label}</span>
+            </button>
           ))}
         </nav>
       </header>
 
-      <main className="main-pad" style={{ padding: "24px", width: "100%", boxSizing: "border-box" }}>
+      <main className="main-pad" style={{ width: "100%", boxSizing: "border-box" }}>
 
         {/* ── DASHBOARD ──────────────────────────────────────────────────── */}
         {onglet === "dashboard" && (
           <>
-            <div className="grid4" style={s.grid4}>
+            <div className="grid4">
               {[
                 { label: "CA annuel estimé", value: formatEur(totaux.caAnnuel), sub: `${moisRemplis}/12 mois saisis`, color: "#c8dde8" },
                 { label: "Bénéfice BNC brut", value: formatEur(totaux.beneficeAnnuel), sub: `Charges déd. : ${formatEur(totaux.chargesAnnuelles)}`, color: "#7ab5c8" },
@@ -381,7 +419,7 @@ export default function App() {
               ))}
             </div>
 
-            <div className="grid2" style={s.grid2}>
+            <div className="grid2">
               <div style={s.card}>
                 <div style={s.sectionTitle}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#06d6a0", display: "inline-block" }} />
@@ -628,7 +666,7 @@ export default function App() {
         {/* ── COTISATIONS ────────────────────────────────────────────────── */}
         {onglet === "cotisations" && (
           <>
-            <div className="grid2" style={s.grid2}>
+            <div className="grid2">
               <div style={s.card}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                   <div>
