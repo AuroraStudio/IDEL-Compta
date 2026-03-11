@@ -463,7 +463,7 @@ export default function App() {
             <div className="grid4">
               {[
                 { label: "CA annuel estimé", value: formatEur(totaux.caAnnuel), sub: `${moisRemplis}/12 mois saisis`, color: "#c8dde8" },
-                { label: "Bénéfice BNC brut", value: formatEur(totaux.beneficeAnnuel), sub: `Charges déd. : ${formatEur(totaux.chargesAnnuelles)}`, color: "#7ab5c8" },
+                { label: "Bénéfice BNC brut", value: formatEur(totaux.beneficeAnnuel), sub: regimeFiscal === "micro" ? `Abatt. forfait. 34% : ${formatEur(totaux.chargesAnnuelles)}` : `Charges déd. : ${formatEur(totaux.chargesAnnuelles)}`, color: "#7ab5c8" },
                 { label: "Revenu net annuel", value: formatEur(totaux.revenuNetAnnuel), sub: `Après URSSAF + CARPIMKO`, color: totaux.revenuNetAnnuel > 0 ? "#06d6a0" : "#e05555" },
                 { label: "Revenu net / mois lissé", value: formatEur(totaux.revenuNetMensuelLisse), sub: `Taux charges totales : ${tauxChargesTotaux.toFixed(0)}%`, color: totaux.revenuNetMensuelLisse > 0 ? "#06d6a0" : "#e05555" },
               ].map((kpi, i) => (
@@ -952,7 +952,7 @@ export default function App() {
               <div className="cotis-recap" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0 }}>
                 {[
                   { label: "CA Annuel", value: totaux.caAnnuel, color: "#c8dde8", bg: "#070d14" },
-                  { label: "Charges déd.", value: totaux.chargesAnnuelles, color: "#e05555", bg: "#070d14" },
+                  { label: regimeFiscal === "micro" ? "Abatt. 34%" : "Charges déd.", value: totaux.chargesAnnuelles, color: "#e05555", bg: "#070d14" },
                   { label: "URSSAF", value: totaux.urssaf.total, color: "#0e8fa0", bg: "#070d14" },
                   { label: "CARPIMKO", value: totaux.carpimko.total, color: "#f59e0b", bg: "#070d14" },
                   { label: "Revenu net", value: totaux.revenuNetAnnuel, color: totaux.revenuNetAnnuel > 0 ? "#06d6a0" : "#e05555", bg: "#0a1e10" },
