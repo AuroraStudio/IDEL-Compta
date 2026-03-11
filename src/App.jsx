@@ -42,8 +42,8 @@ const CHARGES_LABELS = {
 // ─── CALCULS ──────────────────────────────────────────────────────────────────
 
 function calcCARPIMKO(beneficeAnnuel, annee) {
-  if (annee === 1) return { total: 3570, detail: "Base forfaitaire 1ère année", mensuel: 298 };
-  if (annee === 2) return { total: 3570, detail: "Base forfaitaire 2ème année (régularisation à venir)", mensuel: 298 };
+  if (annee === 1) return { total: 3570, deductible: 3570, detail: "Base forfaitaire 1ère année", mensuel: 298 };
+  if (annee === 2) return { total: 3570, deductible: 3570, detail: "Base forfaitaire 2ème année (régularisation à venir)", mensuel: 298 };
   const base = Math.max(0, beneficeAnnuel);
   const retraite_base = base * CARPIMKO_2025.base_taux;
   const comp_assiette = Math.min(
@@ -52,12 +52,13 @@ function calcCARPIMKO(beneficeAnnuel, annee) {
   );
   const complementaire = CARPIMKO_2025.complementaire_forfait + comp_assiette * CARPIMKO_2025.complementaire_taux;
   const total = retraite_base + complementaire + CARPIMKO_2025.invalidite_deces + CARPIMKO_2025.asv_assure;
-  return { total: Math.round(total), mensuel: Math.round(total / 12), detail: "Taux réels N-1" };
+  // En réel BNC : toutes les cotisations CARPIMKO obligatoires sont déductibles
+  return { total: Math.round(total), deductible: Math.round(total), mensuel: Math.round(total / 12), detail: "Taux réels N-1" };
 }
 
 function calcURSSAF(beneficeAnnuel, annee) {
-  if (annee === 1) return { total: 971, mensuel: 81, detail: "Base forfaitaire 1ère année" };
-  if (annee === 2) return { total: 4000, mensuel: 333, detail: "Estimation 2ème année (régularisation)" };
+  if (annee === 1) return { total: 971, deductible: 971, mensuel: 81, detail: "Base forfaitaire 1ère année" };
+  if (annee === 2) return { total: 4000, deductible: 4000, mensuel: 333, detail: "Estimation 2ème année (régularisation)" };
   const b = Math.max(0, beneficeAnnuel);
   let maladie;
   if (b <= URSSAF_TAUX.maladie_seuil_bas) {
@@ -73,7 +74,10 @@ function calcURSSAF(beneficeAnnuel, annee) {
   const retraite = b * URSSAF_TAUX.retraite_base;
   const inval = Math.min(b, PASS_2025) * URSSAF_TAUX.invalidite_deces_urssaf;
   const total = maladie + alloc_fam + csg_crds + retraite + inval;
-  return { total: Math.round(total), mensuel: Math.round(total / 12), detail: "Taux réels N-1" };
+  // CSG/CRDS : 6.8% déductibles, 2.9% non déductibles (sur les 9.7% totaux)
+  const csg_non_deductible = b * 0.029;
+  const deductible = total - csg_non_deductible;
+  return { total: Math.round(total), deductible: Math.round(deductible), mensuel: Math.round(total / 12), detail: "Taux réels N-1" };
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -241,14 +245,26 @@ export default function App() {
     const carpimko = calcCARPIMKO(beneficeAnnuel, anneeExercice);
     const urssaf = calcURSSAF(beneficeAnnuel, anneeExercice);
     const totalCotisations = carpimko.total + urssaf.total;
+
+    // En réel BNC : les cotisations déductibles réduisent le bénéfice imposable
+    // En micro : pas de déduction possible (abattement forfaitaire à la place)
+    const totalDeductible = regimeFiscal === "reel"
+      ? (carpimko.deductible + urssaf.deductible)
+      : 0;
+    const beneficeImposable = Math.max(0, beneficeAnnuel - totalDeductible);
+
+    // Revenu net = ce qu'il a en poche après toutes les cotisations
     const revenuNetAnnuel = beneficeAnnuel - totalCotisations;
+
     return {
-      caAnnuel, chargesAnnuelles, beneficeAnnuel, carpimko, urssaf,
-      totalCotisations, revenuNetAnnuel,
+      caAnnuel, chargesAnnuelles, beneficeAnnuel,
+      carpimko, urssaf, totalCotisations,
+      totalDeductible, beneficeImposable,
+      revenuNetAnnuel,
       revenuNetMensuelLisse: revenuNetAnnuel / 12,
       provisionMensuelle: totalCotisations / 12,
     };
-  }, [calculs, anneeExercice]);
+  }, [calculs, anneeExercice, regimeFiscal]);
 
   const chartData = useMemo(() => MOIS.map((m, i) => ({
     mois: m,
@@ -463,8 +479,13 @@ export default function App() {
             <div className="grid4">
               {[
                 { label: "CA annuel estimé", value: formatEur(totaux.caAnnuel), sub: `${moisRemplis}/12 mois saisis`, color: "#c8dde8" },
-                { label: "Bénéfice BNC brut", value: formatEur(totaux.beneficeAnnuel), sub: regimeFiscal === "micro" ? `Abatt. forfait. 34% : ${formatEur(totaux.chargesAnnuelles)}` : `Charges déd. : ${formatEur(totaux.chargesAnnuelles)}`, color: "#7ab5c8" },
-                { label: "Revenu net annuel", value: formatEur(totaux.revenuNetAnnuel), sub: `Après URSSAF + CARPIMKO`, color: totaux.revenuNetAnnuel > 0 ? "#06d6a0" : "#e05555" },
+                { label: "Bénéfice BNC", value: formatEur(totaux.beneficeAnnuel), sub: regimeFiscal === "micro" ? `Abatt. forfait. 34% : ${formatEur(totaux.chargesAnnuelles)}` : `Charges déd. : ${formatEur(totaux.chargesAnnuelles)}`, color: "#7ab5c8" },
+                {
+                  label: regimeFiscal === "reel" ? "Bénéfice imposable" : "Bénéfice net cotis.",
+                  value: formatEur(regimeFiscal === "reel" ? totaux.beneficeImposable : totaux.beneficeAnnuel - totaux.totalCotisations),
+                  sub: regimeFiscal === "reel" ? `Cotis. déd. : ${formatEur(totaux.totalDeductible)}` : `Cotis. forfait : ${formatEur(totaux.totalCotisations)}`,
+                  color: "#a78bfa"
+                },
                 { label: "Revenu net / mois lissé", value: formatEur(totaux.revenuNetMensuelLisse), sub: `Taux charges totales : ${tauxChargesTotaux.toFixed(0)}%`, color: totaux.revenuNetMensuelLisse > 0 ? "#06d6a0" : "#e05555" },
               ].map((kpi, i) => (
                 <div key={i} style={{ ...s.card, position: "relative", overflow: "hidden" }}>
@@ -949,21 +970,48 @@ export default function App() {
 
             <div style={s.card}>
               <div style={s.sectionTitle}>Récapitulatif & Simulation annuelle</div>
-              <div className="cotis-recap" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0 }}>
+
+              {/* Ligne de calcul visuelle */}
+              <div className="cotis-recap" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, borderRadius: 8, overflow: "hidden", border: "1px solid #132030", marginBottom: 12 }}>
                 {[
-                  { label: "CA Annuel", value: totaux.caAnnuel, color: "#c8dde8", bg: "#070d14" },
-                  { label: regimeFiscal === "micro" ? "Abatt. 34%" : "Charges déd.", value: totaux.chargesAnnuelles, color: "#e05555", bg: "#070d14" },
-                  { label: "URSSAF", value: totaux.urssaf.total, color: "#0e8fa0", bg: "#070d14" },
-                  { label: "CARPIMKO", value: totaux.carpimko.total, color: "#f59e0b", bg: "#070d14" },
-                  { label: "Revenu net", value: totaux.revenuNetAnnuel, color: totaux.revenuNetAnnuel > 0 ? "#06d6a0" : "#e05555", bg: "#0a1e10" },
+                  { label: "CA Annuel", value: totaux.caAnnuel, color: "#c8dde8", bg: "#070d14", sub: null },
+                  { label: regimeFiscal === "micro" ? "Abatt. 34%" : "Charges déd.", value: totaux.chargesAnnuelles, color: "#e05555", bg: "#070d14", sub: "−" },
+                  { label: "URSSAF", value: totaux.urssaf.total, color: "#0e8fa0", bg: "#070d14", sub: "−" },
+                  { label: "CARPIMKO", value: totaux.carpimko.total, color: "#f59e0b", bg: "#070d14", sub: "−" },
+                  { label: "Revenu net", value: totaux.revenuNetAnnuel, color: totaux.revenuNetAnnuel > 0 ? "#06d6a0" : "#e05555", bg: "#0a1e10", sub: "=" },
                 ].map((item, i) => (
-                  <div key={i} style={{ background: item.bg, borderRight: i < 4 ? "1px solid #132030" : "none", padding: "16px 20px", textAlign: i === 4 ? "right" : "left" }}>
+                  <div key={i} style={{ background: item.bg, borderRight: i < 4 ? "1px solid #132030" : "none", padding: "16px 16px", textAlign: "center", position: "relative" }}>
+                    {item.sub && <span style={{ position: "absolute", left: -8, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#2a5060", fontFamily: "DM Mono", zIndex: 1 }}>{item.sub}</span>}
                     <div style={{ fontSize: 10, color: "#4a7a90", fontFamily: "DM Mono", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>{item.label}</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: item.color, fontFamily: "DM Mono" }}>{formatEur(item.value)}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: item.color, fontFamily: "DM Mono" }}>{formatEur(item.value)}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ background: "#06d6a010", border: "1px solid #06d6a030", borderRadius: 8, padding: "14px 20px", marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+
+              {/* Bénéfice imposable — uniquement en réel BNC */}
+              {regimeFiscal === "reel" && (
+                <div style={{ background: "#0e1e30", border: "1px solid #1e3a50", borderRadius: 8, padding: "14px 20px", marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: "#4a7a90", fontFamily: "DM Mono", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+                        Bénéfice imposable (base IR)
+                      </div>
+                      <div style={{ fontSize: 12, color: "#3a6a80", fontFamily: "DM Mono" }}>
+                        Bénéfice BNC {formatEur(totaux.beneficeAnnuel)} − cotisations déductibles {formatEur(totaux.totalDeductible)}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#2a4a5a", fontFamily: "DM Mono", marginTop: 3 }}>
+                        ℹ️ URSSAF déd. : {formatEur(totaux.urssaf.deductible)} · CARPIMKO déd. : {formatEur(totaux.carpimko.deductible)} · CSG non déd. : {formatEur(totaux.urssaf.total - totaux.urssaf.deductible)}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: "#a78bfa", fontFamily: "DM Mono" }}>{formatEur(totaux.beneficeImposable)}</div>
+                      <div style={{ fontSize: 11, color: "#5a4a7a", fontFamily: "DM Mono" }}>avant impôt sur le revenu</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ background: "#06d6a010", border: "1px solid #06d6a030", borderRadius: 8, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 12, color: "#4da870", fontFamily: "DM Mono" }}>
                   💚 Revenu net mensuel lissé sur 12 mois
                 </span>
