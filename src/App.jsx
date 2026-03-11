@@ -88,10 +88,10 @@ const EMPTY_CHARGES_ANNUELLES = () => ({ vehicule: "", blanchissage: "", materie
 // Regime fiscal par défaut selon l'année : micro pour 1-2, réel pour 3+
 const regimeDefaut = (a) => (a >= 3 ? "reel" : "micro");
 
-// Store initial : 4 années indépendantes, chacune avec ses données
+// Store initial : années 1 et 2 fixes, les suivantes ajoutées dynamiquement
 const initStoreAnnees = () => {
   const store = {};
-  [1, 2, 3, 4].forEach(a => {
+  [1, 2, 3].forEach(a => {
     store[a] = {
       mois: Array.from({ length: 12 }, EMPTY_MOIS),
       chargesAnnuellesBloc: EMPTY_CHARGES_ANNUELLES(),
@@ -120,6 +120,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function App() {
   const [anneeExercice, setAnneeExercice] = useState(3);
   const [storeAnnees, setStoreAnnees] = useState(initStoreAnnees);
+  const [nbAnnees, setNbAnnees] = useState(3);
   const [onglet, setOnglet] = useState("dashboard");
   const [moisActif, setMoisActif] = useState(new Date().getMonth());
 
@@ -134,7 +135,26 @@ export default function App() {
     setStoreAnnees(prev => ({ ...prev, [anneeExercice]: { ...prev[anneeExercice], ...patch } }));
 
   // Changement d'année : on switche juste, les données sont conservées
-  const anneeLabel = (v) => ({ 1: "1ère année", 2: "2ème année", 3: "3ème année (frais réels)", 4: "4ème année+" }[v]);
+  const anneeLabel = (v) => {
+    if (v === 1) return "1ère année";
+    if (v === 2) return "2ème année";
+    return `${v}ème année (frais réels)`;
+  };
+
+  const ajouterAnnee = () => {
+    const nouvelleAnnee = nbAnnees + 1;
+    setStoreAnnees(prev => ({
+      ...prev,
+      [nouvelleAnnee]: {
+        mois: Array.from({ length: 12 }, EMPTY_MOIS),
+        chargesAnnuellesBloc: EMPTY_CHARGES_ANNUELLES(),
+        regime: "reel",
+      }
+    }));
+    setNbAnnees(nouvelleAnnee);
+    setAnneeExercice(nouvelleAnnee);
+    setMoisActif(new Date().getMonth());
+  };
 
   const handleSelectAnnee = (val) => {
     const v = +val;
@@ -254,8 +274,8 @@ export default function App() {
         {/* Sélecteur d'année avec indicateurs de données */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 11, color: "#4a7a90" }}>Année</span>
-          <div style={{ display: "flex", gap: 4 }}>
-            {[1, 2, 3, 4].map(a => (
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {Array.from({ length: nbAnnees }, (_, i) => i + 1).map(a => (
               <button
                 key={a}
                 onClick={() => handleSelectAnnee(a)}
@@ -269,11 +289,26 @@ export default function App() {
                 }}
               >
                 Année {a}
+                {a <= 2 && <span style={{ fontSize: 9, color: a === anneeExercice ? "#8abe50" : "#3a5a30" }}>M</span>}
                 {anneeHasDonnees(a) && (
                   <span style={{ width: 5, height: 5, borderRadius: "50%", background: anneeExercice === a ? "#06d6a0" : "#1e8fa0", display: "inline-block" }} />
                 )}
               </button>
             ))}
+            {/* Bouton + pour ajouter une année */}
+            <button
+              onClick={ajouterAnnee}
+              title={`Ajouter l'année ${nbAnnees + 1}`}
+              style={{
+                background: "#0a151f",
+                border: "1px dashed #1e4a5e",
+                borderRadius: 8, padding: "5px 10px", cursor: "pointer",
+                fontFamily: "DM Mono, monospace", fontSize: 13,
+                color: "#1e6a80", transition: "all 0.15s", lineHeight: 1,
+              }}
+            >
+              +
+            </button>
           </div>
         </div>
 
