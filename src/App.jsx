@@ -372,18 +372,6 @@ export default function App() {
     const ir = calcIR(irEstBase, nbParts);
     const totalSorties = totalCotisations + ir.total;
 
-    // Revenu net réellement en poche :
-    // En Micro-BNC : CA − charges réelles payées − cotisations − IR
-    // En Réel BNC  : bénéfice (CA − charges réelles) − cotisations − IR
-    const chargesReellesAnnuelles = calculs.reduce((s, m) => s + m.chargesReelles, 0);
-    const revenuNetAnnuel = regimeFiscal === "micro"
-      ? caAnnuel - chargesReellesAnnuelles - totalCotisations - ir.total
-      : beneficeAnnuel - totalCotisations - ir.total;
-
-    // Revenu net réellement en poche :
-    // En Micro-BNC : CA − charges réelles payées − cotisations − IR
-    //   (l'abattement 34% est fiscal, pas une vraie dépense)
-    // En Réel BNC  : bénéfice (CA − charges réelles) − cotisations − IR
     const chargesReellesAnnuelles = calculs.reduce((s, m) => s + m.chargesReelles, 0);
     const revenuNetAnnuel = regimeFiscal === "micro"
       ? caAnnuel - chargesReellesAnnuelles - totalCotisations - ir.total
