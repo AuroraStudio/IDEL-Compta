@@ -121,7 +121,53 @@ function calcURSSAF(beneficeAnnuel, annee) {
   return { total: Math.round(total), deductible: Math.round(deductible), mensuel: Math.round(total / 12), detail };
 }
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
+// ─── IMPÔT SUR LE REVENU 2025 ─────────────────────────────────────────────────
+// Barème applicable aux revenus 2025 (déclarés en 2026)
+// Source : loi de finances 2026 (+0.9% vs 2025)
+const IR_TRANCHES_2025 = [
+  { min: 0,      max: 11600,  taux: 0 },
+  { min: 11600,  max: 29579,  taux: 0.11 },
+  { min: 29579,  max: 84577,  taux: 0.30 },
+  { min: 84577,  max: 181917, taux: 0.41 },
+  { min: 181917, max: Infinity, taux: 0.45 },
+];
+
+function calcIR(revenuImposable, nbParts = 1) {
+  if (revenuImposable <= 0) return { total: 0, tmi: 0, tauxMoyen: 0, mensuel: 0 };
+  const quotient = revenuImposable / nbParts;
+
+  // Calcul impôt brut pour 1 part
+  let impot1Part = 0;
+  let tmi = 0;
+  for (const tranche of IR_TRANCHES_2025) {
+    if (quotient <= tranche.min) break;
+    const montant = Math.min(quotient, tranche.max) - tranche.min;
+    impot1Part += montant * tranche.taux;
+    if (tranche.taux > 0) tmi = tranche.taux;
+  }
+
+  // Impôt total = impôt 1 part × nb parts
+  let total = Math.round(impot1Part * nbParts);
+
+  // Décote (célibataire : seuil 1 982 €, couple : 3 277 €)
+  // Simplification : on applique la décote individuelle standard
+  const seuilDecote = nbParts >= 2 ? 3277 : 1982;
+  const forfaitDecote = nbParts >= 2 ? 1483 : 897;
+  if (total > 0 && total <= seuilDecote) {
+    const decote = Math.max(0, forfaitDecote - 0.4525 * total);
+    total = Math.max(0, total - decote);
+  }
+
+  const tauxMoyen = revenuImposable > 0 ? (total / revenuImposable * 100) : 0;
+  return {
+    total: Math.round(total),
+    tmi: Math.round(tmi * 100),
+    tauxMoyen: tauxMoyen.toFixed(1),
+    mensuel: Math.round(total / 12),
+  };
+}
+
+
 
 const formatEur = (v) =>
   new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(v || 0);
@@ -200,10 +246,14 @@ export default function App() {
   const [onglet, setOnglet] = useState("dashboard");
   const [moisActif, setMoisActif] = useState(new Date().getMonth());
   const [savedFlash, setSavedFlash] = useState(false);
+  const [nbParts, setNbParts] = useState(() => {
+    const saved = loadFromStorage();
+    return saved?._meta?.nbParts ?? 1;
+  });
 
   // Auto-save à chaque changement
   useEffect(() => {
-    saveToStorage({ ...storeAnnees, _meta: { anneeExercice, nbAnnees } });
+    saveToStorage({ ...storeAnnees, _meta: { anneeExercice, nbAnnees, nbParts } });
     setSavedFlash(true);
     const t = setTimeout(() => setSavedFlash(false), 2000);
     return () => clearTimeout(t);
@@ -311,6 +361,10 @@ export default function App() {
       : 0;
     const beneficeImposable = Math.max(0, beneficeAnnuel - totalDeductible);
 
+    // Impôt sur le revenu — basé sur le bénéfice imposable (revenu BNC net)
+    const ir = calcIR(beneficeImposable, nbParts);
+    const totalSorties = totalCotisations + ir.total;
+
     // Revenu net = ce qu'il a en poche après toutes les cotisations
     const revenuNetAnnuel = beneficeAnnuel - totalCotisations;
 
@@ -318,11 +372,12 @@ export default function App() {
       caAnnuel, chargesAnnuelles, beneficeAnnuel,
       carpimko, urssaf, totalCotisations,
       totalDeductible, beneficeImposable,
+      ir, totalSorties,
       revenuNetAnnuel,
       revenuNetMensuelLisse: revenuNetAnnuel / 12,
       provisionMensuelle: totalCotisations / 12,
     };
-  }, [calculs, anneeExercice, regimeFiscal, storeAnnees]);
+  }, [calculs, anneeExercice, regimeFiscal, storeAnnees, nbParts]);
 
   const chartData = useMemo(() => MOIS.map((m, i) => ({
     mois: m,
@@ -1041,23 +1096,91 @@ export default function App() {
             </div>
 
             <div style={s.card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={s.cardTitle}>Impôt sur le revenu — Estimation</div>
+                  <div style={s.bigNum("#a78bfa")}>{formatEur(totaux.ir.total)}</div>
+                  <div style={s.subNum}>TMI {totaux.ir.tmi}% · Taux moyen {totaux.ir.tauxMoyen}% · {formatEur(totaux.ir.mensuel)}/mois (provisions)</div>
+                </div>
+                {/* Sélecteur parts */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                  <span style={{ fontSize: 10, color: "#5a4a7a", fontFamily: "DM Mono", textTransform: "uppercase", letterSpacing: "0.08em" }}>Quotient familial</span>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {[1, 1.5, 2, 2.5, 3, 3.5].map(p => (
+                      <button
+                        key={p}
+                        onClick={() => setNbParts(p)}
+                        style={{
+                          padding: "4px 8px", borderRadius: 6, border: "1px solid",
+                          borderColor: nbParts === p ? "#a78bfa" : "#1e2a3a",
+                          background: nbParts === p ? "#2d1f4a" : "#0a101a",
+                          color: nbParts === p ? "#a78bfa" : "#4a5a7a",
+                          fontSize: 11, fontFamily: "DM Mono", cursor: "pointer",
+                        }}
+                      >{p}</button>
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 10, color: "#3a3050", fontFamily: "DM Mono" }}>
+                    {nbParts === 1 ? "Célibataire" : nbParts === 2 ? "Couple" : nbParts === 1.5 ? "Parent isolé" : `${nbParts} parts`}
+                  </span>
+                </div>
+              </div>
+              <div style={s.divider} />
+              {[
+                { label: "Base de calcul (bénéfice imposable)", valeur: formatEur(totaux.beneficeImposable) },
+                { label: "Tranches appliquées", valeur: `0% / 11% / 30% / 41% / 45%` },
+                { label: "Nombre de parts", valeur: `${nbParts} part${nbParts > 1 ? "s" : ""}` },
+              ].map((row, i) => (
+                <div key={i} style={s.cotisRow}>
+                  <span style={{ fontSize: 12, color: "#9a80d8" }}>{row.label}</span>
+                  <span style={{ fontSize: 11, fontFamily: "DM Mono", color: "#5a4a80" }}>{row.valeur}</span>
+                </div>
+              ))}
+              <div style={{ ...s.alertBox("#a78bfa"), marginTop: 16, marginBottom: 0 }}>
+                <div style={{ fontSize: 11, color: "#8a70d0", fontFamily: "DM Mono" }}>
+                  ⚠️ Estimation sur la seule activité libérale — d'autres revenus du foyer modifieront ce montant<br />
+                  📅 Prélèvement à la source calculé sur revenus N-1 · solde en septembre
+                </div>
+              </div>
+            </div>
+
+            <div style={s.card}>
               <div style={s.sectionTitle}>Récapitulatif & Simulation annuelle</div>
 
               {/* Ligne de calcul visuelle */}
-              <div className="cotis-recap" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0, borderRadius: 8, overflow: "hidden", border: "1px solid #132030", marginBottom: 12 }}>
+              <div className="cotis-recap" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 0, borderRadius: 8, overflow: "hidden", border: "1px solid #132030", marginBottom: 12 }}>
                 {[
                   { label: "CA Annuel", value: totaux.caAnnuel, color: "#c8dde8", bg: "#070d14", sub: null },
                   { label: regimeFiscal === "micro" ? "Abatt. 34%" : "Charges déd.", value: totaux.chargesAnnuelles, color: "#e05555", bg: "#070d14", sub: "−" },
                   { label: "URSSAF", value: totaux.urssaf.total, color: "#0e8fa0", bg: "#070d14", sub: "−" },
                   { label: "CARPIMKO", value: totaux.carpimko.total, color: "#f59e0b", bg: "#070d14", sub: "−" },
-                  { label: "Revenu net", value: totaux.revenuNetAnnuel, color: totaux.revenuNetAnnuel > 0 ? "#06d6a0" : "#e05555", bg: "#0a1e10", sub: "=" },
+                  { label: "Impôt (IR)", value: totaux.ir.total, color: "#a78bfa", bg: "#070d14", sub: "−" },
+                  { label: "Revenu net", value: totaux.revenuNetAnnuel - totaux.ir.total, color: (totaux.revenuNetAnnuel - totaux.ir.total) > 0 ? "#06d6a0" : "#e05555", bg: "#0a1e10", sub: "=" },
                 ].map((item, i) => (
-                  <div key={i} style={{ background: item.bg, borderRight: i < 4 ? "1px solid #132030" : "none", padding: "16px 16px", textAlign: "center", position: "relative" }}>
+                  <div key={i} style={{ background: item.bg, borderRight: i < 5 ? "1px solid #132030" : "none", padding: "16px 10px", textAlign: "center", position: "relative" }}>
                     {item.sub && <span style={{ position: "absolute", left: -8, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#2a5060", fontFamily: "DM Mono", zIndex: 1 }}>{item.sub}</span>}
                     <div style={{ fontSize: 10, color: "#4a7a90", fontFamily: "DM Mono", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>{item.label}</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: item.color, fontFamily: "DM Mono" }}>{formatEur(item.value)}</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: item.color, fontFamily: "DM Mono" }}>{formatEur(item.value)}</div>
                   </div>
                 ))}
+              </div>
+
+              {/* Bloc total sorties — URSSAF + CARPIMKO + IR */}
+              <div style={{ background: "#100a1e", border: "1px solid #2a1a4a", borderRadius: 8, padding: "14px 20px", marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#5a4a7a", fontFamily: "DM Mono", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+                      🏦 Total sorties obligatoires / an
+                    </div>
+                    <div style={{ fontSize: 11, color: "#3a2a5a", fontFamily: "DM Mono" }}>
+                      URSSAF {formatEur(totaux.urssaf.total)} + CARPIMKO {formatEur(totaux.carpimko.total)} + IR {formatEur(totaux.ir.total)}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: "#c084fc", fontFamily: "DM Mono" }}>{formatEur(totaux.totalSorties)}</div>
+                    <div style={{ fontSize: 11, color: "#5a4080", fontFamily: "DM Mono" }}>{formatEur(totaux.totalSorties / 12)} / mois à provisionner</div>
+                  </div>
+                </div>
               </div>
 
               {/* Bénéfice imposable — uniquement en réel BNC */}
@@ -1085,10 +1208,10 @@ export default function App() {
 
               <div style={{ background: "#06d6a010", border: "1px solid #06d6a030", borderRadius: 8, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 12, color: "#4da870", fontFamily: "DM Mono" }}>
-                  💚 Revenu net mensuel lissé sur 12 mois
+                  💚 Revenu net après cotisations + IR (lissé / mois)
                 </span>
                 <span style={{ fontSize: 22, fontWeight: 700, color: "#06d6a0", fontFamily: "DM Mono" }}>
-                  {formatEur(totaux.revenuNetMensuelLisse)} / mois
+                  {formatEur((totaux.revenuNetAnnuel - totaux.ir.total) / 12)} / mois
                 </span>
               </div>
             </div>
