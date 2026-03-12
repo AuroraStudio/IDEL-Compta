@@ -354,19 +354,26 @@ export default function App() {
     const urssaf = calcURSSAF(beneficePourCotisations, anneeExercice);
     const totalCotisations = carpimko.total + urssaf.total;
 
-    // En réel BNC : les cotisations déductibles réduisent le bénéfice imposable
-    // En micro : pas de déduction possible (abattement forfaitaire à la place)
-    const totalDeductible = regimeFiscal === "reel"
-      ? (carpimko.deductible + urssaf.deductible)
-      : 0;
+    // Bénéfice imposable = bénéfice FISCAL de l'année courante − cotisations déductibles
+    // Important : on déduit les cotisations basées sur le bénéfice COURANT (pas N-1)
+    // car fiscalement c'est le bénéfice courant qui est déclaré
+    const cotisActuelles = calcCARPIMKO(beneficeAnnuel, anneeExercice).deductible
+                         + calcURSSAF(beneficeAnnuel, anneeExercice).deductible;
+    const totalDeductible = regimeFiscal === "reel" ? cotisActuelles : 0;
     const beneficeImposable = Math.max(0, beneficeAnnuel - totalDeductible);
 
     // Impôt sur le revenu — basé sur le bénéfice imposable (revenu BNC net)
     const ir = calcIR(beneficeImposable, nbParts);
     const totalSorties = totalCotisations + ir.total;
 
-    // Revenu net = ce qu'il a en poche après toutes les cotisations
-    const revenuNetAnnuel = beneficeAnnuel - totalCotisations;
+    // Revenu net réellement en poche :
+    // En Micro-BNC : CA − charges réelles payées − cotisations − IR
+    //   (l'abattement 34% est fiscal, pas une vraie dépense)
+    // En Réel BNC  : bénéfice (CA − charges réelles) − cotisations − IR
+    const chargesReellesAnnuelles = calculs.reduce((s, m) => s + m.chargesReelles, 0);
+    const revenuNetAnnuel = regimeFiscal === "micro"
+      ? caAnnuel - chargesReellesAnnuelles - totalCotisations - ir.total
+      : beneficeAnnuel - totalCotisations - ir.total;
 
     return {
       caAnnuel, chargesAnnuelles, beneficeAnnuel,
@@ -1155,7 +1162,7 @@ export default function App() {
                   { label: "URSSAF", value: totaux.urssaf.total, color: "#0e8fa0", bg: "#070d14", sub: "−" },
                   { label: "CARPIMKO", value: totaux.carpimko.total, color: "#f59e0b", bg: "#070d14", sub: "−" },
                   { label: "Impôt (IR)", value: totaux.ir.total, color: "#a78bfa", bg: "#070d14", sub: "−" },
-                  { label: "Revenu net", value: totaux.revenuNetAnnuel - totaux.ir.total, color: (totaux.revenuNetAnnuel - totaux.ir.total) > 0 ? "#06d6a0" : "#e05555", bg: "#0a1e10", sub: "=" },
+                  { label: "Revenu net", value: totaux.revenuNetAnnuel, color: totaux.revenuNetAnnuel > 0 ? "#06d6a0" : "#e05555", bg: "#0a1e10", sub: "=" },
                 ].map((item, i) => (
                   <div key={i} style={{ background: item.bg, borderRight: i < 5 ? "1px solid #132030" : "none", padding: "16px 10px", textAlign: "center", position: "relative" }}>
                     {item.sub && <span style={{ position: "absolute", left: -8, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#2a5060", fontFamily: "DM Mono", zIndex: 1 }}>{item.sub}</span>}
@@ -1211,7 +1218,7 @@ export default function App() {
                   💚 Revenu net après cotisations + IR (lissé / mois)
                 </span>
                 <span style={{ fontSize: 22, fontWeight: 700, color: "#06d6a0", fontFamily: "DM Mono" }}>
-                  {formatEur((totaux.revenuNetAnnuel - totaux.ir.total) / 12)} / mois
+                  {formatEur(totaux.revenuNetAnnuel / 12)} / mois
                 </span>
               </div>
             </div>
