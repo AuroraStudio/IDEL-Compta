@@ -355,16 +355,30 @@ export default function App() {
     const totalCotisations = carpimko.total + urssaf.total;
 
     // Bénéfice imposable = bénéfice FISCAL de l'année courante − cotisations déductibles
-    // Important : on déduit les cotisations basées sur le bénéfice COURANT (pas N-1)
-    // car fiscalement c'est le bénéfice courant qui est déclaré
     const cotisActuelles = calcCARPIMKO(beneficeAnnuel, anneeExercice).deductible
                          + calcURSSAF(beneficeAnnuel, anneeExercice).deductible;
     const totalDeductible = regimeFiscal === "reel" ? cotisActuelles : 0;
     const beneficeImposable = Math.max(0, beneficeAnnuel - totalDeductible);
 
-    // Impôt sur le revenu — basé sur le bénéfice imposable (revenu BNC net)
-    const ir = calcIR(beneficeImposable, nbParts);
+    // Pour l'IR : si on est en A3+ et que le bénéfice courant est incomplet
+    // (moins de 12 mois saisis), on projette sur la base de N-1 pour donner
+    // une estimation réaliste plutôt qu'un IR = 0 trompeur.
+    const moisRemplis = calculs.filter(m => m.ca > 0).length;
+    const irEstBase = (anneeExercice >= 3 && moisRemplis < 12 && beneficePourCotisations > beneficeImposable)
+      ? beneficePourCotisations  // projection N-1
+      : beneficeImposable;       // réel courant si année complète
+    const irEstProjetee = anneeExercice >= 3 && moisRemplis < 12 && beneficePourCotisations > beneficeImposable;
+
+    const ir = calcIR(irEstBase, nbParts);
     const totalSorties = totalCotisations + ir.total;
+
+    // Revenu net réellement en poche :
+    // En Micro-BNC : CA − charges réelles payées − cotisations − IR
+    // En Réel BNC  : bénéfice (CA − charges réelles) − cotisations − IR
+    const chargesReellesAnnuelles = calculs.reduce((s, m) => s + m.chargesReelles, 0);
+    const revenuNetAnnuel = regimeFiscal === "micro"
+      ? caAnnuel - chargesReellesAnnuelles - totalCotisations - ir.total
+      : beneficeAnnuel - totalCotisations - ir.total;
 
     // Revenu net réellement en poche :
     // En Micro-BNC : CA − charges réelles payées − cotisations − IR
@@ -379,7 +393,7 @@ export default function App() {
       caAnnuel, chargesAnnuelles, beneficeAnnuel,
       carpimko, urssaf, totalCotisations,
       totalDeductible, beneficeImposable,
-      ir, totalSorties,
+      ir, totalSorties, irEstProjetee,
       revenuNetAnnuel,
       revenuNetMensuelLisse: revenuNetAnnuel / 12,
       provisionMensuelle: totalCotisations / 12,
@@ -1105,7 +1119,7 @@ export default function App() {
             <div style={s.card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={s.cardTitle}>Impôt sur le revenu — Estimation</div>
+                  <div style={s.cardTitle}>Impôt sur le revenu — {totaux.irEstProjetee ? "Projection N-1" : "Estimation"}</div>
                   <div style={s.bigNum("#a78bfa")}>{formatEur(totaux.ir.total)}</div>
                   <div style={s.subNum}>TMI {totaux.ir.tmi}% · Taux moyen {totaux.ir.tauxMoyen}% · {formatEur(totaux.ir.mensuel)}/mois (provisions)</div>
                 </div>
@@ -1145,6 +1159,7 @@ export default function App() {
               ))}
               <div style={{ ...s.alertBox("#a78bfa"), marginTop: 16, marginBottom: 0 }}>
                 <div style={{ fontSize: 11, color: "#8a70d0", fontFamily: "DM Mono" }}>
+                  {totaux.irEstProjetee && <>📊 Projection basée sur les revenus N-1 — se précisera au fil des mois saisis<br /></>}
                   ⚠️ Estimation sur la seule activité libérale — d'autres revenus du foyer modifieront ce montant<br />
                   📅 Prélèvement à la source calculé sur revenus N-1 · solde en septembre
                 </div>
