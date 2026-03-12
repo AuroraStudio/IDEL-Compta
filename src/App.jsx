@@ -117,7 +117,7 @@ function calcURSSAF(beneficeAnnuel, annee) {
   const deductible = total - csg_non_deductible;
   const detail = annee === 2
     ? "Coût total réel A2 (acomptes + régularisation)"
-    : "Régime PAMC 2025";
+    : "Taux réels N-1 · régularisation en fin d'année";
   return { total: Math.round(total), deductible: Math.round(deductible), mensuel: Math.round(total / 12), detail };
 }
 
@@ -283,8 +283,25 @@ export default function App() {
     const caAnnuel = calculs.reduce((s, m) => s + m.ca, 0);
     const chargesAnnuelles = calculs.reduce((s, m) => s + m.chargesDeductibles, 0);
     const beneficeAnnuel = calculs.reduce((s, m) => s + m.beneficeMensuel, 0);
-    const carpimko = calcCARPIMKO(beneficeAnnuel, anneeExercice);
-    const urssaf = calcURSSAF(beneficeAnnuel, anneeExercice);
+
+    // Pour A3+ : les cotisations provisionnelles sont basées sur le bénéfice N-1
+    // (la caisse cotise d'abord sur N-1, puis régularise quand N est déclaré)
+    let beneficePourCotisations = beneficeAnnuel;
+    if (anneeExercice >= 3) {
+      const anneePrec = storeAnnees[anneeExercice - 1];
+      if (anneePrec) {
+        const calculsPrec = anneePrec.mois.map(m => {
+          const ca = parse(m.ca);
+          const chargesD = anneePrec.regime === "micro" ? ca * 0.34 : CHARGES_KEYS.reduce((s, k) => s + parse(m[k]), 0);
+          return ca - chargesD;
+        });
+        const beneficePrec = calculsPrec.reduce((s, v) => s + v, 0);
+        if (beneficePrec > 0) beneficePourCotisations = beneficePrec;
+      }
+    }
+
+    const carpimko = calcCARPIMKO(beneficePourCotisations, anneeExercice);
+    const urssaf = calcURSSAF(beneficePourCotisations, anneeExercice);
     const totalCotisations = carpimko.total + urssaf.total;
 
     // En réel BNC : les cotisations déductibles réduisent le bénéfice imposable
@@ -305,7 +322,7 @@ export default function App() {
       revenuNetMensuelLisse: revenuNetAnnuel / 12,
       provisionMensuelle: totalCotisations / 12,
     };
-  }, [calculs, anneeExercice, regimeFiscal]);
+  }, [calculs, anneeExercice, regimeFiscal, storeAnnees]);
 
   const chartData = useMemo(() => MOIS.map((m, i) => ({
     mois: m,
