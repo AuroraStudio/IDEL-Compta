@@ -22,11 +22,10 @@ const CARPIMKO_2025 = {
 };
 
 // PAMC : Praticien et Auxiliaire Médical Conventionné
-// Les infirmiers libéraux NE cotisent PAS à l'URSSAF pour la retraite de base
-// (c'est la CARPIMKO qui gère la retraite)
+// L'URSSAF collecte : maladie, alloc familiales, CSG/CRDS, retraite de base, indemnités journalières
+// La CARPIMKO collecte : retraite complémentaire, invalidité-décès, ASV
 const URSSAF_TAUX = {
-  // Maladie PAMC : 6.5% (vs 6.7% régime général TI)
-  // Taux progressif selon revenus
+  // Maladie PAMC : taux progressif 4% → 6.5%
   maladie_taux_haut: 0.065,
   maladie_seuil_bas: 27821,
   maladie_seuil_haut: 51005,
@@ -34,8 +33,11 @@ const URSSAF_TAUX = {
   alloc_fam_taux: 0.031,
   alloc_fam_seuil: 51005,
   csg_crds: 0.097,
-  // Pas de cotisation retraite URSSAF pour les PAMC (CARPIMKO s'en charge)
-  // Pas d'invalidité-décès URSSAF (CARPIMKO s'en charge également)
+  // Retraite de base (collectée par URSSAF pour les PAMC) :
+  // 17.75% jusqu'au PASS (47 100 €), puis 0.60% au-delà
+  retraite_base_taux_plaf: 0.1775,
+  retraite_base_taux_dep: 0.006,
+  retraite_base_plafond: PASS_2025, // 47 100 €
 };
 
 const MOIS = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
@@ -53,14 +55,18 @@ const CHARGES_LABELS = {
 // ─── CALCULS ──────────────────────────────────────────────────────────────────
 
 function calcCARPIMKO(beneficeAnnuel, annee) {
+  // A1 et A2 : cotisations CARPIMKO entièrement forfaitaires (~3 570 €).
+  // En A2, complémentaire/invalidité-décès/ASV restent les mêmes forfaits qu'en A1.
+  // La retraite de base A2 sera régularisée en A3 sur les revenus réels N-1.
   if (annee === 1) return { total: 3570, deductible: 3570, detail: "Base forfaitaire 1ère année", mensuel: 298 };
+  if (annee === 2) return { total: 3570, deductible: 3570, detail: "Forfaits identiques A1 — régularisation retraite de base en A3", mensuel: 298 };
+
+  // A3+ : calcul sur revenus réels N-1
   const base = Math.max(0, beneficeAnnuel);
 
-  // Retraite de base CARPIMKO : structure réelle à deux tranches cumulées
-  // Tranche plafonnée : 8.23% sur la part jusqu'au PASS (47 100 €)
+  // Retraite de base : deux tranches cumulées
   const tranche_plaf = Math.min(base, CARPIMKO_2025.retraite_base_plafond);
   const cotis_plaf = tranche_plaf * CARPIMKO_2025.retraite_base_taux_plafonne;
-  // Tranche déplafonnée : 1.87% sur la part jusqu'à 5×PASS (235 500 €)
   const tranche_dep = Math.min(base, CARPIMKO_2025.retraite_base_plafond_dep);
   const cotis_dep = tranche_dep * CARPIMKO_2025.retraite_base_taux_deplafo;
   const retraite_base = cotis_plaf + cotis_dep;
@@ -73,17 +79,13 @@ function calcCARPIMKO(beneficeAnnuel, annee) {
   const complementaire = CARPIMKO_2025.complementaire_forfait + comp_assiette * CARPIMKO_2025.complementaire_taux;
 
   const total = retraite_base + complementaire + CARPIMKO_2025.invalidite_deces + CARPIMKO_2025.asv_assure;
-  const detail = annee === 2
-    ? "Coût total réel A2 (acomptes + régularisation)"
-    : "Taux réels N-1";
-  return { total: Math.round(total), deductible: Math.round(total), mensuel: Math.round(total / 12), detail };
+  return { total: Math.round(total), deductible: Math.round(total), mensuel: Math.round(total / 12), detail: "Taux réels N-1" };
 }
 
 function calcURSSAF(beneficeAnnuel, annee) {
   if (annee === 1) return { total: 971, deductible: 971, mensuel: 81, detail: "Base forfaitaire 1ère année" };
-  // A2 : acomptes provisionnels sur base forfaitaire (~971€),
-  // mais régularisation sur revenus réels en fin d'année.
-  // On affiche le total réel (ce que l'infirmier devra payer au total).
+  // A2+ : calcul sur revenus réels (acomptes provisionnels en cours d'année
+  // sur base forfaitaire A1, puis régularisation — on affiche le coût total réel)
   const b = Math.max(0, beneficeAnnuel);
 
   // Maladie PAMC : taux progressif 4% → 6.5%
@@ -97,21 +99,20 @@ function calcURSSAF(beneficeAnnuel, annee) {
     maladie = b * (URSSAF_TAUX.maladie_taux_bas + t * (URSSAF_TAUX.maladie_taux_haut - URSSAF_TAUX.maladie_taux_bas));
   }
 
+  // Retraite de base (collectée par URSSAF) : 17.75% ≤ PASS, puis 0.60% au-delà
+  const tranche_plaf = Math.min(b, URSSAF_TAUX.retraite_base_plafond);
+  const tranche_dep = Math.max(0, b - URSSAF_TAUX.retraite_base_plafond);
+  const retraite_base = tranche_plaf * URSSAF_TAUX.retraite_base_taux_plaf + tranche_dep * URSSAF_TAUX.retraite_base_taux_dep;
+
   // Allocations familiales : 0% sous 51 005 €, 3.1% au-dessus
   const alloc_fam = b > URSSAF_TAUX.alloc_fam_seuil ? b * URSSAF_TAUX.alloc_fam_taux : 0;
 
-  // CSG/CRDS : 9.7% total (9.2% CSG + 0.5% CRDS)
+  // CSG/CRDS : 9.7% total
   const csg_crds = b * URSSAF_TAUX.csg_crds;
 
-  // Pas de retraite de base URSSAF pour les PAMC (c'est CARPIMKO)
-  // Pas d'invalidité-décès URSSAF (c'est CARPIMKO)
+  const total = maladie + retraite_base + alloc_fam + csg_crds;
 
-  const total = maladie + alloc_fam + csg_crds;
-
-  // CSG/CRDS déductibilité :
-  // - CSG déductible : 6.8% → non déductible : 2.4%
-  // - CRDS : 0.5% → non déductible
-  // Total non déductible : 2.9%
+  // CSG non déductible : 2.4% + CRDS 0.5% = 2.9%
   const csg_non_deductible = b * 0.029;
   const deductible = total - csg_non_deductible;
   const detail = annee === 2
@@ -977,7 +978,7 @@ export default function App() {
                   { label: "Maladie-maternité (PAMC)", taux: "4% → 6.5%" },
                   { label: "Allocations familiales", taux: "0% → 3.1%" },
                   { label: "CSG / CRDS", taux: "9.7%" },
-                  { label: "Retraite & invalidité", taux: "→ via CARPIMKO" },
+                  { label: "Retraite de base", taux: "17.75% (≤PASS) + 0.60% (>PASS)" },
                 ].map((row, i) => (
                   <div key={i} style={s.cotisRow}>
                     <span style={{ fontSize: 12, color: "#7ab5c8" }}>{row.label}</span>
@@ -1003,7 +1004,7 @@ export default function App() {
                 </div>
                 <div style={s.divider} />
                 {[
-                  { label: "Retraite de base", valeur: anneeExercice >= 3 ? `8.23% (≤PASS) + 1.87% (≤5×PASS)` : "Forfaitaire" },
+                  { label: "Retraite de base", valeur: anneeExercice >= 3 ? `8.23% (≤PASS) + 1.87% (≤5×PASS)` : "Incluse dans forfait (régul. A3)" },
                   { label: "Retraite complémentaire", valeur: `${formatEur(CARPIMKO_2025.complementaire_forfait)} + 3%` },
                   { label: "Invalidité-décès", valeur: `${formatEur(CARPIMKO_2025.invalidite_deces)} forfait` },
                   { label: "ASV (part assurée)", valeur: `${formatEur(CARPIMKO_2025.asv_assure)} forfait` },
@@ -1016,7 +1017,7 @@ export default function App() {
                 <div style={{ ...s.alertBox("#f59e0b"), marginTop: 16, marginBottom: 0 }}>
                   <div style={{ fontSize: 11, color: "#c8a050", fontFamily: "DM Mono" }}>
                     📅 Appel annuel CARPIMKO — généralement mars/avril<br />
-                    {anneeExercice === 3 ? "✅ 3ème année : premières cotisations définitives" : anneeExercice <= 2 ? "⚠️ Régularisation à prévoir sur revenus réels" : "✅ Rythme de croisière"}
+                    {anneeExercice === 3 ? "✅ 3ème année : premières cotisations définitives" : anneeExercice <= 2 ? "⚠️ Régularisation retraite de base prévue en A3" : "✅ Rythme de croisière"}
                   </div>
                 </div>
               </div>
