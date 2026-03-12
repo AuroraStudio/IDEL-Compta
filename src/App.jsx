@@ -54,7 +54,6 @@ const CHARGES_LABELS = {
 
 function calcCARPIMKO(beneficeAnnuel, annee) {
   if (annee === 1) return { total: 3570, deductible: 3570, detail: "Base forfaitaire 1ère année", mensuel: 298 };
-  if (annee === 2) return { total: 3570, deductible: 3570, detail: "Base forfaitaire 2ème année (régularisation à venir)", mensuel: 298 };
   const base = Math.max(0, beneficeAnnuel);
 
   // Retraite de base CARPIMKO : structure réelle à deux tranches cumulées
@@ -74,13 +73,17 @@ function calcCARPIMKO(beneficeAnnuel, annee) {
   const complementaire = CARPIMKO_2025.complementaire_forfait + comp_assiette * CARPIMKO_2025.complementaire_taux;
 
   const total = retraite_base + complementaire + CARPIMKO_2025.invalidite_deces + CARPIMKO_2025.asv_assure;
-  // En réel BNC : toutes les cotisations CARPIMKO obligatoires sont déductibles
-  return { total: Math.round(total), deductible: Math.round(total), mensuel: Math.round(total / 12), detail: "Taux réels N-1" };
+  const detail = annee === 2
+    ? "Coût total réel A2 (acomptes + régularisation)"
+    : "Taux réels N-1";
+  return { total: Math.round(total), deductible: Math.round(total), mensuel: Math.round(total / 12), detail };
 }
 
 function calcURSSAF(beneficeAnnuel, annee) {
   if (annee === 1) return { total: 971, deductible: 971, mensuel: 81, detail: "Base forfaitaire 1ère année" };
-  if (annee === 2) return { total: 4000, deductible: 4000, mensuel: 333, detail: "Estimation 2ème année (régularisation)" };
+  // A2 : acomptes provisionnels sur base forfaitaire (~971€),
+  // mais régularisation sur revenus réels en fin d'année.
+  // On affiche le total réel (ce que l'infirmier devra payer au total).
   const b = Math.max(0, beneficeAnnuel);
 
   // Maladie PAMC : taux progressif 4% → 6.5%
@@ -111,7 +114,10 @@ function calcURSSAF(beneficeAnnuel, annee) {
   // Total non déductible : 2.9%
   const csg_non_deductible = b * 0.029;
   const deductible = total - csg_non_deductible;
-  return { total: Math.round(total), deductible: Math.round(deductible), mensuel: Math.round(total / 12), detail: "Régime PAMC 2025" };
+  const detail = annee === 2
+    ? "Coût total réel A2 (acomptes + régularisation)"
+    : "Régime PAMC 2025";
+  return { total: Math.round(total), deductible: Math.round(deductible), mensuel: Math.round(total / 12), detail };
 }
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -580,16 +586,31 @@ export default function App() {
               </div>
             </div>
 
-            {anneeExercice <= 2 && (
+            {anneeExercice === 1 && (
               <div style={s.alertBox("#e05555")}>
                 <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                   <span style={{ fontSize: 20 }}>🚨</span>
                   <div>
                     <div style={{ color: "#e05555", fontFamily: "DM Mono", fontSize: 13, fontWeight: 600 }}>
-                      Attention : régularisation à venir en {anneeExercice === 1 ? "2ème" : "3ème"} année !
+                      Attention : régularisation à venir en 2ème année !
                     </div>
                     <div style={{ color: "#904040", fontSize: 12, marginTop: 4 }}>
                       Les cotisations forfaitaires actuelles seront recalculées sur les revenus réels. La différence peut être significative — épargne au minimum 50% du CA.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {anneeExercice === 2 && (
+              <div style={s.alertBox("#e05555")}>
+                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 20 }}>⚠️</span>
+                  <div>
+                    <div style={{ color: "#e05555", fontFamily: "DM Mono", fontSize: 13, fontWeight: 600 }}>
+                      2ème année : les montants affichés sont le coût total réel
+                    </div>
+                    <div style={{ color: "#904040", fontSize: 12, marginTop: 4 }}>
+                      Les acomptes versés en cours d'année sont calculés sur la base forfaitaire A1 (~971 € URSSAF). Le solde sera appelé en régularisation. Provisionne la différence chaque mois.
                     </div>
                   </div>
                 </div>
